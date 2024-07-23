@@ -31,6 +31,7 @@ json-server data/db.json
 ```
 npm run serve
 ```
+- The Vue development server will start at http://localhost:8080.
 
 ## Project Structure
 ```
