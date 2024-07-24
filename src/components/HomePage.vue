@@ -91,7 +91,7 @@
             },
             getDirectReports(id){
                 // get data of employee's direct reports, output in array
-                return this.employees.filter(employee => employee.managerId === Number(id));
+                return this.employees.filter(employee => Number(employee.managerId) === Number(id));
             },
             getIndirectReports(id){
                 // get direct reports
@@ -110,7 +110,7 @@
             },
             getDirectManagers(id){
                 // get data of employee's direct manager, output in array
-                return this.employees.filter(employee => employee.id === Number(id));
+                return this.employees.filter(employee => Number(employee.id) === Number(id));
             },
             getIndirectManagers(id) {
                 let managers = [];
