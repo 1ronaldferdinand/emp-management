@@ -1,10 +1,8 @@
-# emp-management - Vue 2 Project with JSON Server
+# emp-management - Vue 2 Project
 
 ### Features
 
 - **Vue 2** for frontend development
-- **JSON Server** for backend API simulation
-- **Axios** for HTTP requests
 
 ## Installation
 
@@ -19,14 +17,6 @@
 npm install
 ```
 
-#### Run Json-Server 
-```
-json-server data/db.json
-```
-- This will start the JSON Server at https://localhost:3000.
-- By default in local, JSON Server will run at host localhost and port 3000. 
-- If your host or port was different you need to update .env file.
-
 #### Run the Vue development server
 ```
 npm run serve
@@ -35,8 +25,6 @@ npm run serve
 
 ## Project Structure
 ```
-├── data
-│   └── db.json
 ├── public
 │   ├── favicon.ico
 │   └── index.html
@@ -45,7 +33,6 @@ npm run serve
 │   ├── components 
 │   ├── App.vue
 │   └── main.js
-├── .env
 ├── package.json
 └── README.md
 ```
