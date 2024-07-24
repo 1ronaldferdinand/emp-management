@@ -11,12 +11,12 @@
                 <div class="col-12 d-flex align-items-center">
                     <div class="col-6 col-sm-4 col-lg-2">Direct Reports</div>
                     <div class="col-1">:</div>
-                    <div class="col-5 col-sm-7 col-lg-9">{{ foundEmployee.countDirectReports }}</div>
+                    <div class="col-5 col-sm-7 col-lg-9">{{ foundEmployee && foundEmployee.countDirectReports ? foundEmployee.countDirectReports : 0 }}</div>
                 </div>
                 <div class="col-12 d-flex align-items-center">
                     <div class="col-6 col-sm-4 col-lg-2">Indirect Reports</div>
                     <div class="col-1">:</div>
-                    <div class="col-5 col-sm-7 col-lg-9">{{ foundEmployee.countIndirectReports }}</div>
+                    <div class="col-5 col-sm-7 col-lg-9">{{ foundEmployee && foundEmployee.countIndirectReports ? foundEmployee.countIndirectReports : 0 }}</div>
                 </div>
             </div>
 
@@ -44,7 +44,6 @@ export default {
         foundEmployee: {
             type: Object,
             default: () => {},
-            required: true,
         },
         foundManagers: {
             type: Array,
@@ -58,7 +57,7 @@ export default {
             hierarchies.push(this.foundEmployee); 
             return hierarchies;
         },
-    }
+    },
 }
 </script>
 

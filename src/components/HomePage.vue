@@ -5,7 +5,11 @@
         <div v-if="loading" class="d-flex align-items-center justify-content-center" style="height: calc(100% - 56px);">
             <b-spinner></b-spinner>
         </div>
-        <div v-else class="d-flex align-items-center justify-content-center" style="height: calc(100% - 56px); overflow-y: auto;">
+        <div v-else-if="employees.length == 0" class="d-flex flex-column align-items-center justify-content-center gap-3" style="height: calc(100% - 56px); overflow-y: auto;">
+            <span><b>Upload JSON File</b></span>
+            <input type="file" @change="handleFileUpload" />
+        </div>
+        <div v-else class="d-flex flex-column gap-3 align-items-center justify-content-center" style="height: calc(100% - 56px); overflow-y: auto;">
             <div class="d-flex align-items-center">
                 <div class="input-search">
                     <b-icon icon="search"></b-icon>
@@ -14,34 +18,48 @@
 
                 <b-button variant="outline-info" class="search-button" @click="searchEmployee()">Search</b-button>
             </div>
+
+            <div class="d-flex gap-3 align-items-center justify-content-center">
+                <b-button variant="warning" @click="reupload()" style="font-size: 12px; color: white;">Reupload</b-button>
+                <b-button variant="info" @click="$bvModal.show('modal-upload-employees')" style="font-size: 12px; color: white;">Show Employee List</b-button>
+            </div>
         </div>
 
         <SearchAlert :employeeName="searchKeyword" :managers="searchManagers" :status="searchStatus" />
         <EmployeeDetail :foundEmployee="foundEmployee" :foundManagers="foundManagers" />
+        <EmployeeUploadDetail :invalidEmployees="invalidEmployees" :validEmployees="employees"/>
+
+        <b-modal id="modal-upload-alert" size="sm" hide-header hide-footer no-close-on-backdrop no-close-on-esc>
+            <p class="my-2">JSON Upload Success!</p>
+        </b-modal>
     </div>
 </template>
   
 <script>
+    import EmployeeUploadDetail from './modal/EmployeeUploadDetail.vue';
     import EmployeeDetail from './modal/EmployeeDetail.vue';
     import SearchAlert from './modal/SearchAlert.vue';
     import NavbarPage from './NavbarPage.vue';
-    import axios from "axios";
 
     export default {
         name: 'HomePage',
         components: {
             NavbarPage,
             SearchAlert,
-            EmployeeDetail
+            EmployeeDetail,
+            EmployeeUploadDetail
         },
         mounted() {
-            this.getEmployees();
+            setTimeout(() => {
+                this.loading = false;
+            }, 800);
         },
         data() {
             return {
                 loading: true,
 
                 employees: [],
+                invalidEmployees: [],
                 
                 foundEmployee: {},
                 foundManagers: [],
@@ -54,78 +72,20 @@
             }
         },
         methods: {
-            async getEmployees() {
-                try {
-                    // asynchronously to get data from json-server using axios
-                    const res = await axios.get(process.env.VUE_APP_JSON_SERVER_URL + "employees");
-                    this.employees = res.data; // store result data to employees
-                    this.employees = this.employees.map(employee => { 
-                        return {
-                            ...employee,
-                            // adding new params to store number of direct reports & indirect reports of employees
-                            countDirectReports: this.countDirectReports(employee.id),
-                            countIndirectReports: this.countIndirectReports(employee.id)
-                        };
-                    });
+            reupload() {
+                this.loading = true;
+                this.employees = [];
+                this.invalidEmployees = [];
+                this.foundEmployee = {};
+                this.foundManagers = [];
+                this.searchKeyword = '';
+                this.searchManagers = '';
+                this.searchStatus = null;
+                this.found = false;
 
-                    setTimeout(() => {
-                        this.loading = false; // show input field after 800ms
-                        this.$nextTick(() => {
-                            if (this.$refs.searchInput) {
-                                // focus on input when input is showed
-                                this.$refs.searchInput.focus();
-                            }
-                        });
-                    }, 800);
-                } catch (error) {
-                    console.error(error);
-                }
-            },
-            countDirectReports(id){
-                // count how many employee's direct reports
-                return this.getDirectReports(id).length;
-            },
-            countIndirectReports(id){
-                // count how many employee's indirect reports
-                return this.getIndirectReports(id).length;
-            },
-            getDirectReports(id){
-                // get data of employee's direct reports, output in array
-                return this.employees.filter(employee => Number(employee.managerId) === Number(id));
-            },
-            getIndirectReports(id){
-                // get direct reports
-                let directReports = this.getDirectReports(id);
-                let indirectReports = [];
-
-                // loop over direct reports data then take data from direct reports' direct reports
-                for (let report of directReports) {
-                    indirectReports = indirectReports.concat(this.getDirectReports(report.id));
-                    
-                    // perform this function continuously until the direct reports have no more direct reports
-                    indirectReports = indirectReports.concat(this.getIndirectReports(report.id));
-                }   
-
-                return indirectReports;
-            },
-            getDirectManagers(id){
-                // get data of employee's direct manager, output in array
-                return this.employees.filter(employee => Number(employee.id) === Number(id));
-            },
-            getIndirectManagers(id) {
-                let managers = [];
-                let currentId = id; // define first id to get direct manager
-
-                // Loop until get manager with managerId == null
-                while (currentId !== null) {
-                    let manager = this.getDirectManagers(currentId);
-                    
-                    managers.push(manager[0]); // The obtained manager data is stored in a temporary variable
-                    currentId = manager[0].managerId; // Update the currentId data which previously stored the managerId to be searched
-                }
-
-                // Reverse the data hierarchy so that the root manager is at the front
-                return managers.reverse();
+                setTimeout(() => {
+                    this.loading = false;
+                }, 800);
             },
             async showModal(){
                 if(this.found){
@@ -139,6 +99,56 @@
                         this.$bvModal.hide('modal-search-alert');
                     }, 2000);
                 }
+            },
+            recursiveSearch(employeeList, keyword, withId = false) {
+                for (const employee of employeeList) {
+                    if(withId){
+                        // Check if the employee's name matches the keyword
+                        if (employee.id == keyword) {
+                            return employee;
+                        }
+                    } else { 
+                        // Check if the employee's name matches the keyword
+                        if (employee.name.toLowerCase().includes(keyword.toLowerCase())) {
+                            return employee;
+                        }
+                    }
+
+                    // Recursively search in directReports if they exist
+                    if (employee.directReports && employee.directReports.length > 0) {
+                        let found = null;
+
+                        if(withId){
+                            found = this.recursiveSearch(employee.directReports, keyword, true);
+                        } else {
+                            found = this.recursiveSearch(employee.directReports, keyword);
+                        }
+
+                        if (found) return found;
+                    }
+                }
+
+                return null;
+            },
+            getIndirectManagers(id) {
+                let managers = [];
+                let currentId = id; // define first id to get direct manager
+
+                // Loop until get manager with managerId == null
+                while (currentId !== null) {
+                    let manager = this.recursiveSearch(this.employees, currentId, true);
+                    
+                    if (manager === null) {
+                        // If manager is not found, break the loop
+                        break;
+                    }
+
+                    managers.push(manager); // The obtained manager data is stored in a temporary variable
+                    currentId = manager.managerId; // Update the currentId data which previously stored the managerId to be searched
+                }
+
+                // Reverse the data hierarchy so that the root manager is at the front
+                return managers.reverse();
             },
             searchEmployee(){
                 this.searchStatus = 0;
@@ -154,40 +164,112 @@
 
                 if(this.employees.length != 0){
                     // Look for employees with names that match keywords
-                    let findEmployee = this.employees.filter(employee => employee.name.toLowerCase() === this.searchKeyword.toLowerCase());
-                    
-                    if(findEmployee.length == 1){
-                        // If only one employee found
-                        this.searchStatus = 2;
-
-                        let hasReports = this.getDirectReports(findEmployee[0].id); // get his/her direct reports
-                        let hasManagers = this.getDirectManagers(findEmployee[0].managerId); // get his/her direct manager
-
-                        if(hasReports.length > 0 || hasManagers.length > 0){
-                            // set found status is true when employee has direct report or has direct manager
-                            this.searchStatus = 1;
-                            this.foundEmployee = findEmployee[0];
-                            this.foundManagers = this.getIndirectManagers(findEmployee[0].managerId);
-                            this.found = true;
-                        }
-                    } else if (findEmployee.length > 1){
-                        // If found more than one employee with same name
-                        let managers = [];
-
-                        // get the managers data of that employee
-                        findEmployee.forEach(element => {
-                            let manager = this.getDirectManagers(element.managerId);
-                            managers.push(manager[0].name.charAt(0).toUpperCase() + manager[0].name.slice(1));
-                        });
-
-                        // combine the manager data into one string as an additional error message
-                        this.searchManagers = managers.join(', ');
-                        this.searchStatus = 3;
+                    this.foundEmployee = this.recursiveSearch(this.employees, this.searchKeyword);
+                    if (this.foundEmployee) {
+                        this.foundManagers = this.getIndirectManagers(this.foundEmployee.managerId);
+                        this.searchStatus = 1;
+                        this.found = true;
                     }
                 } 
 
                 this.showModal();
-                return;
+            },
+            handleFileUpload(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            let inputData = JSON.parse(e.target.result);
+                            const result = this.transformData(inputData);
+                           
+                            this.employees = result.transformedData;
+                            this.invalidEmployees = result.invalidData;
+                            console.log(this.employees);
+                            
+                            this.$bvModal.show('modal-upload-alert');
+
+                            setTimeout(() => {
+                                this.$bvModal.hide('modal-upload-alert');
+                            }, 800);
+                            
+                            this.$bvModal.show('modal-upload-employees');
+                        } catch (err) {
+                            alert('Invalid JSON file');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            },
+            transformData(data) {
+                const dataMap = {};
+                const topLevels = [];
+                const invalidData = [];
+
+                // Initialize the dataMap and counts
+                data.forEach(item => {
+                    dataMap[item.id] = { ...item, directReports: [], countDirectReports: 0, countIndirectReports: 0 };
+                });
+
+                // Build the directReports and topLevels
+                data.forEach(item => {
+                    if (item.managerId === null) {
+                        topLevels.push(dataMap[item.id]);
+                    } else {
+                        if (dataMap[item.managerId]) {
+                            dataMap[item.managerId].directReports.push(dataMap[item.id]);
+                        } else {
+                            invalidData.push({ ...item, reason: 'Manager not found' });
+                        }
+                    }
+
+                    // Cek apakah ID karyawan muncul lebih dari sekali
+                    if (Object.values(dataMap).some(entry => entry.name === item.name && entry.managerId !== item.managerId)) {
+                        invalidData.push({ ...item, reason: 'Unable to process employee tree. ' + item.name + ' has multiple managers' });
+                    }
+                });
+
+                // Check for invalid employees
+                Object.values(dataMap).forEach(item => {
+                    if (item.managerId === null && item.directReports.length === 0) {
+                        invalidData.push({ ...item, reason: 'Unable to process employeee hierarchy. ' + item.name + ' not having hierarchy' });
+                    }
+                });
+
+                // Function to recursively remove invalid employees from directReports
+                const removeInvalidEmployees = (employee) => {
+                    employee.directReports = employee.directReports
+                        .filter(child => !invalidData.some(invalidItem => invalidItem.id === child.id))
+                        .map(child => {
+                            removeInvalidEmployees(child);
+                            return child;
+                        });
+                };
+
+                // Remove invalid employees from dataMap
+                invalidData.forEach(invalidItem => {
+                    delete dataMap[invalidItem.id];
+                });
+
+                // Apply recursive filtering to topLevels
+                topLevels.forEach(employee => removeInvalidEmployees(employee));
+
+                // Calculate counts for each valid employee
+                topLevels.forEach(employee => this.calculateCounts(employee));
+
+                // Rebuild topLevels without invalid employees
+                const filteredTopLevels = topLevels.filter(employee => dataMap[employee.id]);
+
+                return { transformedData: filteredTopLevels, invalidData };
+            },
+            calculateCounts(employee){
+                employee.countDirectReports = employee.directReports.length;
+                employee.countIndirectReports = employee.directReports.reduce((total, child) => {
+                    this.calculateCounts(child);
+                    return total + child.countDirectReports + child.countIndirectReports;
+                }, 0);
+
+                return employee;
             },
         }
     }
